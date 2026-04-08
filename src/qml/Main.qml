@@ -377,6 +377,13 @@ StatetfulApp.StatefulWindow {
                             Kirigami.Action {
                                 id: newNoteFromPromptAction
                                 fromQAction: App.action('add_note_from_prompt')
+                                visible: {
+                                    try {
+                                        return JSON.parse(Config.aiEndpoints || "[]").length > 0;
+                                    } catch(e) {
+                                        return false;
+                                    }
+                                }
                             }
 
                             Controls.Menu {

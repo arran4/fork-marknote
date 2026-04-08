@@ -21,6 +21,7 @@ FormCard.FormCardDialog {
 
     property var modelsList: []
     property bool isGenerating: false
+    property var aiEndpoints: []
 
     NotesModel {
         id: notesModel
@@ -28,9 +29,18 @@ FormCard.FormCardDialog {
     }
 
     onOpened: {
+        try {
+            root.aiEndpoints = JSON.parse(Config.aiEndpoints || "[]");
+        } catch(e) {
+            root.aiEndpoints = [];
+        }
+
         nameInput.forceActiveFocus()
-        checkSaveButton()
-        fetchModels()
+
+        if (root.aiEndpoints.length > 0) {
+            endpointComboBox.currentIndex = 0;
+            fetchModels();
+        }
     }
 
     onRejected: {
@@ -43,10 +53,11 @@ FormCard.FormCardDialog {
         name = "";
         prompt = "";
         modelsList = [];
+        root.destroy();
     }
 
     function checkSaveButton() {
-        if (!isGenerating && nameInput.text.length > 0 && promptInput.text.length > 0 && modelComboBox.currentIndex >= 0) {
+        if (!isGenerating && nameInput.text.length > 0 && promptInput.text.length > 0 && modelComboBox.currentIndex >= 0 && endpointComboBox.currentIndex >= 0) {
             root.standardButton(Controls.Dialog.Save).enabled = true;
         } else {
             root.standardButton(Controls.Dialog.Save).enabled = false;
@@ -54,8 +65,24 @@ FormCard.FormCardDialog {
     }
 
     function fetchModels() {
+        if (endpointComboBox.currentIndex < 0 || root.aiEndpoints.length === 0) {
+            root.modelsList = [];
+            return;
+        }
+
+        var endpoint = root.aiEndpoints[endpointComboBox.currentIndex];
+        if (endpoint.type !== "ollama") {
+            root.modelsList = [];
+            return;
+        }
+
+        var url = endpoint.url;
+        if (!url.endsWith("/")) {
+            url += "/";
+        }
+
         var xhr = new XMLHttpRequest();
-        xhr.open("GET", "http://localhost:11434/api/tags", true);
+        xhr.open("GET", url + "api/tags", true);
         xhr.onreadystatechange = function() {
             if (xhr.readyState === XMLHttpRequest.DONE) {
                 if (xhr.status === 200) {
@@ -74,9 +101,11 @@ FormCard.FormCardDialog {
                         }
                     } catch(e) {
                         console.error("Error parsing models:", e);
+                        root.modelsList = [];
                     }
                 } else {
                     console.error("Failed to fetch models, status:", xhr.status);
+                    root.modelsList = [];
                 }
                 checkSaveButton();
             }
@@ -85,45 +114,69 @@ FormCard.FormCardDialog {
     }
 
     onAccepted: {
-        if (nameInput.text.length === 0 || promptInput.text.length === 0 || modelComboBox.currentIndex < 0 || root.modelsList.length === 0) {
+        if (nameInput.text.length === 0 || promptInput.text.length === 0 || modelComboBox.currentIndex < 0 || root.modelsList.length === 0 || endpointComboBox.currentIndex < 0) {
             return;
         }
 
         root.isGenerating = true;
         checkSaveButton();
 
+        var endpoint = root.aiEndpoints[endpointComboBox.currentIndex];
         var selectedModel = root.modelsList[modelComboBox.currentIndex];
         var promptText = promptInput.text;
         var noteName = root.name;
 
-        var xhr = new XMLHttpRequest();
-        xhr.open("POST", "http://localhost:11434/api/generate", true);
-        xhr.setRequestHeader("Content-Type", "application/json");
-        xhr.onreadystatechange = function() {
-            if (xhr.readyState === XMLHttpRequest.DONE) {
-                root.isGenerating = false;
-                if (xhr.status === 200) {
-                    try {
-                        var response = JSON.parse(xhr.responseText);
-                        var generatedText = response.response || "";
-
-                        notesModel.addNoteWithContent(noteName, generatedText);
-                        NavigationController.notePath = noteName + '.md';
-                    } catch(e) {
-                        console.error("Error parsing generate response:", e);
-                    }
-                } else {
-                    console.error("Failed to generate, status:", xhr.status);
-                }
-                root.close();
+        if (endpoint.type === "ollama") {
+            var url = endpoint.url;
+            if (!url.endsWith("/")) {
+                url += "/";
             }
-        };
-        var data = JSON.stringify({
-            "model": selectedModel,
-            "prompt": promptText,
-            "stream": false
-        });
-        xhr.send(data);
+
+            var xhr = new XMLHttpRequest();
+            xhr.open("POST", url + "api/generate", true);
+            xhr.setRequestHeader("Content-Type", "application/json");
+            xhr.onreadystatechange = function() {
+                if (xhr.readyState === XMLHttpRequest.DONE) {
+                    root.isGenerating = false;
+                    if (xhr.status === 200) {
+                        try {
+                            var response = JSON.parse(xhr.responseText);
+                            var generatedText = response.response || "";
+
+                            notesModel.addNoteWithContent(noteName, generatedText);
+                            NavigationController.notePath = noteName + '.md';
+                        } catch(e) {
+                            console.error("Error parsing generate response:", e);
+                        }
+                    } else {
+                        console.error("Failed to generate, status:", xhr.status);
+                    }
+                    root.close();
+                }
+            };
+            var data = JSON.stringify({
+                "model": selectedModel,
+                "prompt": promptText,
+                "stream": false
+            });
+            xhr.send(data);
+        } else {
+            root.isGenerating = false;
+            console.error("Unsupported endpoint type:", endpoint.type);
+            root.close();
+        }
+    }
+
+    FormCard.FormComboBoxDelegate {
+        id: endpointComboBox
+        textRole: ""
+        model: root.aiEndpoints.map(e => e.name ? e.name + " (" + e.url + ")" : e.url)
+        label: KI18n.i18nc("@label:combobox API Endpoint", "Endpoint:")
+        onCurrentIndexChanged: {
+            fetchModels();
+            checkSaveButton();
+        }
+        enabled: !root.isGenerating
     }
 
     FormCard.FormTextFieldDelegate {
