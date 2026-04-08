@@ -144,6 +144,19 @@ QString NotesModel::addNote(const QString &name)
     return name;
 }
 
+QString NotesModel::addNoteWithContent(const QString &name, const QString &content)
+{
+    const QString path = m_path + u'/' + name + QStringLiteral(".md");
+    QFile file(path);
+    if (file.open(QFile::WriteOnly)) {
+        file.write(content.toUtf8());
+    } else {
+        qDebug() << "Failed to create file at" << path;
+    }
+    updateEntries();
+    return name;
+}
+
 void NotesModel::deleteNote(const QUrl &path)
 {
     QFile::remove(path.toLocalFile());

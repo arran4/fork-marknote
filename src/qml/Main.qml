@@ -153,6 +153,26 @@ StatetfulApp.StatefulWindow {
             }
         }
 
+        function onNewNoteFromPrompt(): void {
+            if (NavigationController.notebookPath.length === 0) {
+                root.showPassiveNotification(
+                    i18nc("@info:status", "Unable to create a new note, you need to create a notebook first."),
+                                             "long",
+                                             i18nc("@action:button", "Create Notebook"),
+                                             () => { newNotebookAction.trigger(); });
+                return;
+            }
+            const component = Qt.createComponent("org.kde.marknote", "NoteFromPromptDialog");
+            if (component.status === Component.Ready) {
+                const dialog = component.createObject(root, {
+                    notebookPath: NavigationController.notebookPath
+                });
+                dialog.open();
+            } else {
+                console.error(component.errorString());
+            }
+        }
+
         function onPreferences(): void {
             settingsView.open();
         }
@@ -352,6 +372,11 @@ StatetfulApp.StatefulWindow {
                             Kirigami.Action {
                                 id: newNoteAction
                                 fromQAction: App.action('add_note')
+                            }
+
+                            Kirigami.Action {
+                                id: newNoteFromPromptAction
+                                fromQAction: App.action('add_note_from_prompt')
                             }
 
                             Controls.Menu {
