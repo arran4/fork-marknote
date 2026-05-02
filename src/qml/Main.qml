@@ -13,6 +13,7 @@ import org.kde.marknote.settings
 import org.kde.kirigamiaddons.delegates as Delegates
 import org.kde.kirigamiaddons.statefulapp as StatetfulApp
 import org.kde.kirigamiaddons.components as Components
+import Qt.labs.platform as Platform
 import "components"
 
 StatetfulApp.StatefulWindow {
@@ -188,6 +189,41 @@ StatetfulApp.StatefulWindow {
         id: settingsView
         window: root
         application: App
+    }
+
+    Platform.SystemTrayIcon {
+        id: trayIcon
+        visible: true
+        icon.name: "org.kde.marknote"
+        tooltip: i18nc("Application name", "Marknote")
+
+        function toggleWindow() {
+            if (root.visible) {
+                root.hide();
+            } else {
+                root.show();
+                root.raise();
+                root.requestActivate();
+            }
+        }
+
+        menu: Platform.Menu {
+            Platform.MenuItem {
+                text: i18nc("@action:inmenu", "Show/Hide")
+                onTriggered: trayIcon.toggleWindow()
+            }
+            Platform.MenuSeparator {}
+            Platform.MenuItem {
+                text: i18nc("@action:inmenu", "Quit")
+                onTriggered: Qt.quit()
+            }
+        }
+
+        onActivated: (reason) => {
+            if (reason === Platform.SystemTrayIcon.Trigger) {
+                toggleWindow();
+            }
+        }
     }
 
     Component.onCompleted: {
