@@ -21,6 +21,7 @@ ecm_add_qml_module(marknote_static
         qml/NotesPage.qml
         qml/NoteLinkDialog.qml
         qml/NoteMetadataDialog.qml
+        qml/NoteFromPromptDialog.qml
         qml/WelcomePage.qml
         # Notebook
         qml/NotebookContextMenu.qml

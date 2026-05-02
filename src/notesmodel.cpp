@@ -144,6 +144,30 @@ QString NotesModel::addNote(const QString &name)
     return name;
 }
 
+QString NotesModel::addNoteWithContent(const QString &name, const QString &content)
+{
+    const QString path = m_path + u'/' + name + QStringLiteral(".md");
+    if (QFile::exists(path)) {
+        Q_EMIT errorOccurred(i18nc("@info:status", "Unable to create note. A note already exists with the same name."));
+        return {};
+    }
+
+    QFile file(path);
+    if (!file.open(QFile::WriteOnly)) {
+        qWarning() << "Failed to create file at" << path;
+        Q_EMIT errorOccurred(i18nc("@info:status", "Failed to create the note file."));
+        return {};
+    }
+
+    if (file.write(content.toUtf8()) == -1) {
+        qWarning() << "Failed to write content to" << path;
+        return {};
+    }
+
+    updateEntries();
+    return name;
+}
+
 void NotesModel::deleteNote(const QUrl &path)
 {
     QFile::remove(path.toLocalFile());

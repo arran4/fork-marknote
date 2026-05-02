@@ -23,6 +23,7 @@ public:
 Q_SIGNALS:
     void newNotebook();
     void newNote();
+    void newNoteFromPrompt();
     void preferences();
     void importFromMaildir();
     void importFromKNotes();

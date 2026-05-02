@@ -38,6 +38,102 @@ FormCard.FormCardPage {
     }
 
     FormCard.FormHeader {
+        title: i18n("AI Settings")
+    }
+
+    Item {
+        id: aiEndpointsContainer
+        Layout.fillWidth: true
+        implicitHeight: childrenRect.height
+
+        property var endpointsArray: {
+            try {
+                return JSON.parse(Config.aiEndpoints || "[]");
+            } catch(e) {
+                return [];
+            }
+        }
+
+        function saveEndpoints(newEndpoints) {
+            Config.aiEndpoints = JSON.stringify(newEndpoints);
+            Config.save();
+            endpointsArray = newEndpoints;
+        }
+
+        ColumnLayout {
+            width: parent.width
+
+            Repeater {
+                model: aiEndpointsContainer.endpointsArray
+                delegate: ColumnLayout {
+                    Layout.fillWidth: true
+
+                    FormCard.FormCard {
+                        Layout.fillWidth: true
+
+                        property int endpointIndex: index
+
+                        FormCard.FormTextFieldDelegate {
+                            label: i18n("Name (Optional):")
+                            text: modelData.name || ""
+                            onEditingFinished: {
+                                let newEndpoints = aiEndpointsContainer.endpointsArray;
+                                newEndpoints[endpointIndex].name = text;
+                                aiEndpointsContainer.saveEndpoints(newEndpoints);
+                            }
+                        }
+
+                        FormCard.FormTextFieldDelegate {
+                            label: i18n("URL:")
+                            text: modelData.url || ""
+                            placeholderText: "http://localhost:11434"
+                            onEditingFinished: {
+                                let newEndpoints = aiEndpointsContainer.endpointsArray;
+                                newEndpoints[endpointIndex].url = text;
+                                aiEndpointsContainer.saveEndpoints(newEndpoints);
+                            }
+                        }
+
+                        FormCard.FormComboBoxDelegate {
+                            label: i18n("Type:")
+                            model: ["ollama"]
+                            currentIndex: modelData.type === "ollama" ? 0 : 0
+                            onActivated: {
+                                let newEndpoints = aiEndpointsContainer.endpointsArray;
+                                newEndpoints[endpointIndex].type = model[currentIndex];
+                                aiEndpointsContainer.saveEndpoints(newEndpoints);
+                            }
+                        }
+
+                        FormCard.FormButtonDelegate {
+                            text: i18n("Remove Endpoint")
+                            icon.name: "list-remove"
+                            onClicked: {
+                                let newEndpoints = aiEndpointsContainer.endpointsArray;
+                                newEndpoints.splice(endpointIndex, 1);
+                                aiEndpointsContainer.saveEndpoints(newEndpoints);
+                            }
+                        }
+                    }
+                }
+            }
+
+            FormCard.FormCard {
+                Layout.fillWidth: true
+                FormCard.FormButtonDelegate {
+                    text: i18n("Add AI Endpoint")
+                    icon.name: "list-add"
+                    onClicked: {
+                        let newEndpoints = aiEndpointsContainer.endpointsArray;
+                        newEndpoints.push({name: "", url: "", type: "ollama"});
+                        aiEndpointsContainer.saveEndpoints(newEndpoints);
+                    }
+                }
+            }
+        }
+    }
+
+    FormCard.FormHeader {
         title: i18n("Editor Settings")
     }
 

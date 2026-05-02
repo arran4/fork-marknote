@@ -46,6 +46,14 @@ void App::setupActions()
         mainCollection()->setDefaultShortcut(action, QKeySequence(Qt::CTRL | Qt::Key_N));
     }
 
+    actionName = "add_note_from_prompt"_L1;
+    if (KAuthorized::authorizeAction(actionName)) {
+        auto action = mainCollection()->addAction(actionName, this, &App::newNoteFromPrompt);
+        action->setText(i18nc("@action:inmenu", "New Note from Prompt"));
+        action->setIcon(QIcon::fromTheme(QStringLiteral("list-add-symbolic")));
+        mainCollection()->addAction(action->objectName(), action);
+    }
+
     actionName = "options_configure"_L1;
     if (KAuthorized::authorizeAction(actionName)) {
         auto action = KStandardActions::preferences(this, &App::preferences, this);

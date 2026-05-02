@@ -38,6 +38,9 @@ public:
     /// \return the path of the newly added not
     Q_INVOKABLE QString addNote(const QString &name);
 
+    /// \return the path of the newly added note with content
+    Q_INVOKABLE QString addNoteWithContent(const QString &name, const QString &content);
+
     Q_INVOKABLE void deleteNote(const QUrl &path);
 
     Q_INVOKABLE void renameNote(const QUrl &path, const QString &name);
