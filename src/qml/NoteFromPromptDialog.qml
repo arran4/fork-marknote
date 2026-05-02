@@ -6,8 +6,8 @@ import QtQuick.Controls as Controls
 import QtQuick.Layouts
 
 import org.kde.marknote
+import org.kde.kirigami as Kirigami
 import org.kde.kirigamiaddons.formcard as FormCard
-import org.kde.ki18n
 
 FormCard.FormCardDialog {
     id: root
@@ -16,8 +16,8 @@ FormCard.FormCardDialog {
     property alias prompt: promptInput.text
     required property string notebookPath
 
-    title: KI18n.i18nc("@title:window", "New Note from Prompt")
-    standardButtons: Controls.Dialog.Save | Controls.Dialog.Cancel
+    title: i18nc("@title:window", "New Note from Prompt")
+    standardButtons: Controls.Dialog.NoButton
 
     property var modelsList: []
     property bool isGenerating: false
@@ -27,6 +27,26 @@ FormCard.FormCardDialog {
         id: notesModel
         path: root.notebookPath
     }
+
+    customFooterActions: [
+        Kirigami.Action {
+            text: i18n("Cancel")
+            icon.name: "dialog-cancel"
+            enabled: !root.isGenerating
+            onTriggered: {
+                root.close();
+            }
+        },
+        Kirigami.Action {
+            id: generateAction
+            text: root.isGenerating ? i18n("Generating...") : i18n("Save")
+            icon.name: "document-save"
+            enabled: !root.isGenerating && nameInput.text.length > 0 && promptInput.text.length > 0 && modelComboBox.currentIndex >= 0 && endpointComboBox.currentIndex >= 0
+            onTriggered: {
+                root.generateNote();
+            }
+        }
+    ]
 
     onOpened: {
         try {
@@ -43,25 +63,11 @@ FormCard.FormCardDialog {
         }
     }
 
-    onRejected: {
-        if (!isGenerating) {
-            root.close();
-        }
-    }
-
     onClosed: {
         name = "";
         prompt = "";
         modelsList = [];
         root.destroy();
-    }
-
-    function checkSaveButton() {
-        if (!isGenerating && nameInput.text.length > 0 && promptInput.text.length > 0 && modelComboBox.currentIndex >= 0 && endpointComboBox.currentIndex >= 0) {
-            root.standardButton(Controls.Dialog.Save).enabled = true;
-        } else {
-            root.standardButton(Controls.Dialog.Save).enabled = false;
-        }
     }
 
     function fetchModels() {
@@ -107,19 +113,17 @@ FormCard.FormCardDialog {
                     console.error("Failed to fetch models, status:", xhr.status);
                     root.modelsList = [];
                 }
-                checkSaveButton();
             }
         };
         xhr.send();
     }
 
-    onAccepted: {
+    function generateNote() {
         if (nameInput.text.length === 0 || promptInput.text.length === 0 || modelComboBox.currentIndex < 0 || root.modelsList.length === 0 || endpointComboBox.currentIndex < 0) {
             return;
         }
 
         root.isGenerating = true;
-        checkSaveButton();
 
         var endpoint = root.aiEndpoints[endpointComboBox.currentIndex];
         var selectedModel = root.modelsList[modelComboBox.currentIndex];
@@ -145,13 +149,15 @@ FormCard.FormCardDialog {
 
                             notesModel.addNoteWithContent(noteName, generatedText);
                             NavigationController.notePath = noteName + '.md';
+                            root.close();
                         } catch(e) {
                             console.error("Error parsing generate response:", e);
+                            Kirigami.applicationWindow().showPassiveNotification(i18n("Error parsing response from AI endpoint."), "short");
                         }
                     } else {
                         console.error("Failed to generate, status:", xhr.status);
+                        Kirigami.applicationWindow().showPassiveNotification(i18n("Failed to generate note from AI endpoint. Check network or endpoint configuration."), "short");
                     }
-                    root.close();
                 }
             };
             var data = JSON.stringify({
@@ -163,7 +169,7 @@ FormCard.FormCardDialog {
         } else {
             root.isGenerating = false;
             console.error("Unsupported endpoint type:", endpoint.type);
-            root.close();
+            Kirigami.applicationWindow().showPassiveNotification(i18n("Unsupported AI endpoint type."), "short");
         }
     }
 
@@ -171,21 +177,19 @@ FormCard.FormCardDialog {
         id: endpointComboBox
         textRole: ""
         model: root.aiEndpoints.map(e => e.name ? e.name + " (" + e.url + ")" : e.url)
-        label: KI18n.i18nc("@label:combobox API Endpoint", "Endpoint:")
+        label: i18nc("@label:combobox API Endpoint", "Endpoint:")
         onCurrentIndexChanged: {
             fetchModels();
-            checkSaveButton();
         }
         enabled: !root.isGenerating
     }
 
     FormCard.FormTextFieldDelegate {
         id: nameInput
-        label: KI18n.i18nc("@label:textbox Note name", "Name:")
+        label: i18nc("@label:textbox Note name", "Name:")
         validator: RegularExpressionValidator {
             regularExpression: /^[^./\\][^/\\]*$/
         }
-        onTextChanged: checkSaveButton()
         enabled: !root.isGenerating
     }
 
@@ -193,15 +197,13 @@ FormCard.FormCardDialog {
         id: modelComboBox
         textRole: ""
         model: root.modelsList
-        label: KI18n.i18nc("@label:combobox Model", "Model:")
-        onCurrentIndexChanged: checkSaveButton()
+        label: i18nc("@label:combobox Model", "Model:")
         enabled: !root.isGenerating
     }
 
     FormCard.FormTextAreaDelegate {
         id: promptInput
-        label: KI18n.i18nc("@label:textarea Prompt", "Prompt:")
-        onTextChanged: checkSaveButton()
+        label: i18nc("@label:textarea Prompt", "Prompt:")
         enabled: !root.isGenerating
     }
 }
