@@ -192,22 +192,25 @@ StatetfulApp.StatefulWindow {
     }
 
     Platform.SystemTrayIcon {
+        id: trayIcon
         visible: true
         icon.name: "org.kde.marknote"
         tooltip: i18nc("Application name", "Marknote")
 
+        function toggleWindow() {
+            if (root.visible) {
+                root.hide();
+            } else {
+                root.show();
+                root.raise();
+                root.requestActivate();
+            }
+        }
+
         menu: Platform.Menu {
             Platform.MenuItem {
                 text: i18nc("@action:inmenu", "Show/Hide")
-                onTriggered: {
-                    if (root.visible) {
-                        root.hide();
-                    } else {
-                        root.show();
-                        root.raise();
-                        root.requestActivate();
-                    }
-                }
+                onTriggered: trayIcon.toggleWindow()
             }
             Platform.MenuSeparator {}
             Platform.MenuItem {
@@ -216,15 +219,9 @@ StatetfulApp.StatefulWindow {
             }
         }
 
-        onActivated: function(reason) {
+        onActivated: (reason) => {
             if (reason === Platform.SystemTrayIcon.Trigger) {
-                if (root.visible) {
-                    root.hide();
-                } else {
-                    root.show();
-                    root.raise();
-                    root.requestActivate();
-                }
+                toggleWindow();
             }
         }
     }
